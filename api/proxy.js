@@ -123,7 +123,9 @@ module.exports = async function handler(req, res) {
       if (!sd) sd = hd;
 
       // Bungkus lewat proxy download biar ga 403
-      const base = `${req.headers["x-forwarded-proto"] || "https"}://${req.headers.host}/api/proxy`;
+      const proto = req.headers["x-forwarded-proto"] || "https";
+      const host  = req.headers["x-forwarded-host"] || req.headers.host;
+      const base  = `${proto}://${host}/api/proxy`;
       const wrap = (u, ext) => u
         ? `${base}?mode=download&fileurl=${encodeURIComponent(u)}&filename=${encodeURIComponent(data.title || "video")}&ext=${ext}`
         : "";
