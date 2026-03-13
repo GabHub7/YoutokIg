@@ -1,3 +1,12 @@
 {
-  "version": 2
+  "version": 2,
+  "functions": {
+    "api/proxy.js": {
+      "runtime": "nodejs20.x"
+    }
+  },
+  "routes": [
+    { "src": "/api/proxy", "dest": "/api/proxy.js" },
+    { "src": "/(.*)", "dest": "/public/$1" }
+  ]
 }
