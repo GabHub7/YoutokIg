@@ -99,19 +99,6 @@ module.exports = async function handler(req, res) {
     if (!vid) return res.status(400).json({ error: "URL YouTube tidak valid" });
 
     try {
-      // DEBUG: return raw API response
-      const debugRes = await fetch(
-        `https://youtube-video-and-shorts-downloader.p.rapidapi.com/download.php?id=${vid}`,
-        {
-          headers: {
-            "x-rapidapi-host": "youtube-video-and-shorts-downloader.p.rapidapi.com",
-            "x-rapidapi-key": RAPIDAPI_KEY
-          }
-        }
-      );
-      const debugData = await debugRes.json();
-      return res.json({ DEBUG: debugData });
-
       const apiRes = await fetch(
         `https://youtube-video-and-shorts-downloader.p.rapidapi.com/download.php?id=${vid}`,
         {
@@ -124,26 +111,32 @@ module.exports = async function handler(req, res) {
       const data = await apiRes.json();
 
       let hd = "", sd = "", mp3 = "";
-      const links = data.links || {};
-      // Cari link MP4 HD, SD, MP3
-      for (const [key, val] of Object.entries(links)) {
-        const q = (val.quality || key || "").toLowerCase();
-        const t = (val.type || "").toLowerCase();
-        if (!hd  && (q.includes("720") || q.includes("1080")) && t.includes("mp4")) hd  = val.url || "";
-        if (!sd  && q.includes("360") && t.includes("mp4"))                          sd  = val.url || "";
-        if (!mp3 && t.includes("mp3"))                                                mp3 = val.url || "";
-      }
-      if (!hd && Object.values(links).length > 0) hd = Object.values(links)[0].url || "";
-      if (!sd) sd = hd;
+      const results = data.results || [];
+
+      // MP3 = audio/mp4 has_audio:true
+      const audioTrack = results.find(r => r.has_audio && r.mime === "audio/mp4");
+      mp3 = audioTrack?.url || "";
+
+      // Video tracks (no audio) - cari HD dan SD
+      const videoTracks = results.filter(r => !r.has_audio && r.mime === "video/mp4");
+      const hdTrack = videoTracks.find(r => r.quality === "1080p") ||
+                      videoTracks.find(r => r.quality === "1280p") ||
+                      videoTracks.find(r => r.quality === "854p");
+      const sdTrack = videoTracks.find(r => r.quality === "640p") ||
+                      videoTracks.find(r => r.quality === "426p") ||
+                      videoTracks.find(r => r.quality === "256p");
+
+      hd = hdTrack?.url || videoTracks[0]?.url || "";
+      sd = sdTrack?.url || hd;
 
       const wrap = (u) => u || "";
 
       return res.json({
         source:    "youtube",
-        title:     data.title    || "",
-        author:    data.author   || "",
-        thumbnail: `https://img.youtube.com/vi/${vid}/hqdefault.jpg`,
-        duration:  data.duration || 0,
+        title:     data.title     || "",
+        author:    data.author    || data.channel || "",
+        thumbnail: data.thumbnail || `https://img.youtube.com/vi/${vid}/hqdefault.jpg`,
+        duration:  data.duration  || 0,
         embedId:   vid,
         hd:  wrap(hd),
         sd:  wrap(sd),
@@ -155,4 +148,4 @@ module.exports = async function handler(req, res) {
   }
 
   return res.status(400).json({ error: "Request tidak valid" });
-        }
+  }
