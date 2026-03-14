@@ -100,41 +100,41 @@ module.exports = async function handler(req, res) {
 
     try {
       const apiRes = await fetch(
-        `https://yt-api.p.rapidapi.com/dl?id=${vid}`,
+        `https://youtube-video-and-shorts-downloader.p.rapidapi.com/download.php?id=${vid}`,
         {
           headers: {
-            "x-rapidapi-host": "yt-api.p.rapidapi.com",
+            "x-rapidapi-host": "youtube-video-and-shorts-downloader.p.rapidapi.com",
             "x-rapidapi-key": RAPIDAPI_KEY
           }
         }
       );
       const data = await apiRes.json();
-      const formats = data.formats || data.adaptiveFormats || [];
 
       let hd = "", sd = "", mp3 = "";
-      for (const f of formats) {
-        const mtype = f.mimeType     || "";
-        const q     = f.qualityLabel || f.quality || "";
-        if (!hd  && mtype.includes("video") && (q.includes("720") || q.includes("1080"))) hd  = f.url || "";
-        if (!sd  && mtype.includes("video") && q.includes("360"))                         sd  = f.url || "";
-        if (!mp3 && mtype.includes("audio"))                                               mp3 = f.url || "";
+      const links = data.links || {};
+      // Cari link MP4 HD, SD, MP3
+      for (const [key, val] of Object.entries(links)) {
+        const q = (val.quality || key || "").toLowerCase();
+        const t = (val.type || "").toLowerCase();
+        if (!hd  && (q.includes("720") || q.includes("1080")) && t.includes("mp4")) hd  = val.url || "";
+        if (!sd  && q.includes("360") && t.includes("mp4"))                          sd  = val.url || "";
+        if (!mp3 && t.includes("mp3"))                                                mp3 = val.url || "";
       }
-      if (!hd && formats.length > 0) hd = formats[0].url || "";
+      if (!hd && Object.values(links).length > 0) hd = Object.values(links)[0].url || "";
       if (!sd) sd = hd;
 
-      // Langsung pakai URL asli
-      const wrap = (u, ext) => u || "";
+      const wrap = (u) => u || "";
 
       return res.json({
         source:    "youtube",
-        title:     data.title        || "",
-        author:    data.channelTitle || "",
+        title:     data.title    || "",
+        author:    data.author   || "",
         thumbnail: `https://img.youtube.com/vi/${vid}/hqdefault.jpg`,
-        duration:  data.lengthSeconds || 0,
+        duration:  data.duration || 0,
         embedId:   vid,
-        hd:  wrap(hd,  "mp4"),
-        sd:  wrap(sd,  "mp4"),
-        mp3: wrap(mp3, "mp3")
+        hd:  wrap(hd),
+        sd:  wrap(sd),
+        mp3: wrap(mp3)
       });
     } catch (e) {
       return res.status(500).json({ error: e.message });
@@ -142,4 +142,4 @@ module.exports = async function handler(req, res) {
   }
 
   return res.status(400).json({ error: "Request tidak valid" });
-            }
+  }
