@@ -99,6 +99,19 @@ module.exports = async function handler(req, res) {
     if (!vid) return res.status(400).json({ error: "URL YouTube tidak valid" });
 
     try {
+      // DEBUG: return raw API response
+      const debugRes = await fetch(
+        `https://youtube-video-and-shorts-downloader.p.rapidapi.com/download.php?id=${vid}`,
+        {
+          headers: {
+            "x-rapidapi-host": "youtube-video-and-shorts-downloader.p.rapidapi.com",
+            "x-rapidapi-key": RAPIDAPI_KEY
+          }
+        }
+      );
+      const debugData = await debugRes.json();
+      return res.json({ DEBUG: debugData });
+
       const apiRes = await fetch(
         `https://youtube-video-and-shorts-downloader.p.rapidapi.com/download.php?id=${vid}`,
         {
@@ -142,4 +155,4 @@ module.exports = async function handler(req, res) {
   }
 
   return res.status(400).json({ error: "Request tidak valid" });
-  }
+        }
